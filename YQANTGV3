@@ -1774,7 +1774,5 @@ local Button = Tab:CreateButton({
    Rayfield:Destroy()
    end,
 })
-Rayfield:LoadConfiguration()
-else
    warn("Game not support.")
 end
