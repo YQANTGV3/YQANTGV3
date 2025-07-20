@@ -29,7 +29,7 @@ local Window = Rayfield:CreateWindow({
       RememberJoins = true
    },
 
-   KeySystem = false,
+   KeySystem = true,
    KeySettings = {
       Title = "Key",
       Subtitle = "Key System",
@@ -816,10 +816,10 @@ local player = game.Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
--- GUI: Cooldown bar
+-- GUI
 local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
 screenGui.Name = "StickGui"
-screenGui.ResetOnSpawn = false -- ✅ giữ lại GUI sau khi chết
+screenGui.ResetOnSpawn = false
 
 local cooldownFrame = Instance.new("Frame", screenGui)
 cooldownFrame.Size = UDim2.new(0, 240, 0, 25)
@@ -853,14 +853,13 @@ local spamThread = nil
 local noclipConnection = nil
 local isCooldown = false
 
--- Danh sách animation Burrow
+-- Animation
 local burrowAnimations = {
 	"10469643643", "10469639222", "13532604085", "13294471966", "13295919399", "13295936866",
 	"13378751717", "13378708199", "14001963401", "14136436157", "15240176873", "15162694192",
 	"16515448089", "16552234590", "17889471098", "17889290569", "104895379416342", "134775406437626"
 }
 
--- Animation cần dùng remote
 local triggerRemoteAnimations = {
 	["rbxassetid://10469639222"] = true,
 	["rbxassetid://13532604085"] = true,
@@ -958,6 +957,7 @@ local function startCooldown()
 	isCooldown = false
 end
 
+-- ✅ FIX FLING – dùng BodyPosition + BodyGyro
 local function burrowUnderTarget(char, target)
 	if isCooldown then return end
 	isCooldown = true
@@ -977,14 +977,40 @@ local function burrowUnderTarget(char, target)
 
 	local y = tHrp.Position.Y - 4.7
 	hrp.CFrame = CFrame.new(Vector3.new(tHrp.Position.X, y, tHrp.Position.Z))
-
 	local holdConn = holdY(hrp, y)
+
+	-- BodyPosition + BodyGyro (anti-fling)
+	local bodyPos = Instance.new("BodyPosition")
+	bodyPos.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+	bodyPos.P = 3000
+	bodyPos.D = 100
+	bodyPos.Position = tHrp.Position - Vector3.new(0, 4.7, 0)
+	bodyPos.Parent = hrp
+
+	local bodyGyro = Instance.new("BodyGyro")
+	bodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+	bodyGyro.P = 3000
+	bodyGyro.CFrame = hrp.CFrame
+	bodyGyro.Parent = hrp
+
+	local followConn = RunService.Heartbeat:Connect(function()
+		if tHrp and bodyPos then
+			bodyPos.Position = tHrp.Position - Vector3.new(0, 4.7, 0)
+			bodyGyro.CFrame = CFrame.new(hrp.Position, tHrp.Position)
+		end
+	end)
+
 	task.delay(0.28, function()
 		cam.CameraType = oldCamType
 	end)
 
 	task.wait(0.7)
+
 	if holdConn then holdConn:Disconnect() end
+	if followConn then followConn:Disconnect() end
+	if bodyPos then bodyPos:Destroy() end
+	if bodyGyro then bodyGyro:Destroy() end
+
 	disableNoclip(char)
 	task.delay(3, function()
 		startCooldown()
@@ -1031,7 +1057,7 @@ function connectAnimationWatcher()
 	end)
 end
 
--- Gắn lại sau khi chết
+-- Reconnect sau khi chết
 player.CharacterAdded:Connect(function(char)
 	character = char
 	humanoidRootPart = character:WaitForChild("HumanoidRootPart")
@@ -1042,22 +1068,22 @@ end)
 -- Lần đầu
 connectAnimationWatcher()
 
--- Gắn Toggle
+-- Toggle GUI
 local Toggle = Tab:CreateToggle({
-   Name = "Auto WallCombo + AnyWhere ( - 25% miss )",
-   CurrentValue = false,
-   Flag = "AutoWallComboBurrow",
-   Callback = function(Value)
-       autoEnabled = Value
-       if autoEnabled then
-           startSpam()
-       else
-           if spamThread then
-               task.cancel(spamThread)
-               spamThread = nil
-           end
-       end
-   end,
+	Name = "Auto WallCombo + AnyWhere ( Fix Some miss )",
+	CurrentValue = false,
+	Flag = "AutoWallComboBurrow",
+	Callback = function(Value)
+		autoEnabled = Value
+		if autoEnabled then
+			startSpam()
+		else
+			if spamThread then
+				task.cancel(spamThread)
+				spamThread = nil
+			end
+		end
+	end,
 })
 
 -- Character handler
