@@ -33,11 +33,11 @@ local Window = Rayfield:CreateWindow({
    KeySettings = {
       Title = "Key",
       Subtitle = "Key System",
-      Note = "Question: Who Is Owner",
+      Note = "Question: 1000 - 7 = ?",
       FileName = "key",
       SaveKey = false,
       GrabKeyFromSite = false,
-      Key = {"YQANTG"}
+      Key = {"993"}
    }
 })
 
