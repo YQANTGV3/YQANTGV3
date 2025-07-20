@@ -33,11 +33,11 @@ local Window = Rayfield:CreateWindow({
    KeySettings = {
       Title = "Key",
       Subtitle = "Key System",
-      Note = "Question: 1000 - 7 = ?",
+      Note = "Question: Who Is Owner",
       FileName = "key",
       SaveKey = false,
       GrabKeyFromSite = false,
-      Key = {"993"}
+      Key = {"YQANTG"}
    }
 })
 
@@ -975,7 +975,7 @@ local function burrowUnderTarget(char, target)
 	local oldCamType = cam.CameraType
 	cam.CameraType = Enum.CameraType.Scriptable
 
-	local y = tHrp.Position.Y - 4.2
+	local y = tHrp.Position.Y - 4.7
 	hrp.CFrame = CFrame.new(Vector3.new(tHrp.Position.X, y, tHrp.Position.Z))
 
 	local holdConn = holdY(hrp, y)
@@ -983,7 +983,7 @@ local function burrowUnderTarget(char, target)
 		cam.CameraType = oldCamType
 	end)
 
-	task.wait(0.28)
+	task.wait(0.7)
 	if holdConn then holdConn:Disconnect() end
 	disableNoclip(char)
 	task.delay(3, function()
@@ -1044,7 +1044,7 @@ connectAnimationWatcher()
 
 -- Gắn Toggle
 local Toggle = Tab:CreateToggle({
-   Name = "Auto WallCombo + AnyWhere",
+   Name = "Auto WallCombo + AnyWhere ( - 25% miss )",
    CurrentValue = false,
    Flag = "AutoWallComboBurrow",
    Callback = function(Value)
@@ -1774,5 +1774,6 @@ local Button = Tab:CreateButton({
    Rayfield:Destroy()
    end,
 })
+
    warn("Game not support.")
 end
