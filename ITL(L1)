@@ -1,0 +1,96 @@
+_G._ILAKyotoEnabled = true
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local function FireDashRemote()
+	local args = {{
+		Dash = Enum.KeyCode.W,
+		Key = Enum.KeyCode.Q,
+		Goal = "KeyPress"
+	}}
+	LocalPlayer.Character:WaitForChild("Communicate"):FireServer(unpack(args))
+end
+
+local TotalRotationY = 0
+
+local function RotateAndLift(angleAdd, liftAmount)
+	local char = LocalPlayer.Character
+	if not char then return end
+
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	TotalRotationY += angleAdd
+
+	local pos = hrp.Position
+	local newRotation = CFrame.Angles(0, math.rad(TotalRotationY), 0)
+	local finalCFrame = CFrame.new(Vector3.new(pos.X, pos.Y + liftAmount, pos.Z)) * newRotation
+
+	hrp.CFrame = finalCFrame
+	Camera.CFrame = finalCFrame + (Camera.CFrame.LookVector.Unit * -6)
+end
+
+_G._KyotoHeartbeatConn = nil
+local cooldownFlag = false
+local animationId = "rbxassetid://12273188754"
+
+local function onHeartbeat()
+	if not _G._ILAKyotoEnabled then return end
+
+	local Character = LocalPlayer.Character
+	if not Character then return end
+
+	local Humanoid = Character:FindFirstChild("Humanoid")
+	local HumanoidRootPart = Character:FindFirstChild("HumanoidRootPart")
+	if not Humanoid or not HumanoidRootPart then return end
+
+	for _, track in pairs(Humanoid:GetPlayingAnimationTracks()) do
+		if track.Animation and track.Animation.AnimationId == animationId and not cooldownFlag then
+			cooldownFlag = true
+
+			task.delay(3, function()
+				cooldownFlag = false
+			end)
+
+			task.spawn(function()
+				local t1 = tick()
+				while tick() - t1 < 1.6 do
+					if not _G._ILAKyotoEnabled then return end
+					RunService.Heartbeat:Wait()
+				end
+
+				local forward = HumanoidRootPart.CFrame.LookVector * 27
+				local targetCFrame = CFrame.new(HumanoidRootPart.Position + forward)
+
+				local tween = TweenService:Create(HumanoidRootPart, TweenInfo.new(0.2), {
+					CFrame = targetCFrame
+				})
+				tween:Play()
+
+				task.wait(0.1)
+
+				local tool = LocalPlayer:FindFirstChild("Backpack"):FindFirstChild("Lethal Whirlwind Stream")
+				if tool then
+					local com = Character:FindFirstChild("Communicate")
+					if com then
+						com:FireServer({
+							{
+								Tool = tool,
+								Goal = "Console Move"
+							}
+						})
+					end
+				end
+			end)
+
+			break
+		end
+	end
+end
+
+_G._KyotoHeartbeatConn = RunService.Heartbeat:Connect(onHeartbeat)
