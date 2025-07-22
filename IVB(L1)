@@ -1,0 +1,42 @@
+local player = game.Players.LocalPlayer
+local targetAnimationId = "rbxassetid://10470389827"
+
+local function stopBlockAnimations(humanoid)
+	for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+		if track.Animation and track.Animation.AnimationId == targetAnimationId then
+			track:Stop()
+			pcall(function() track:Destroy() end)
+		end
+	end
+end
+
+local function setup(char)
+	local hum = char:WaitForChild("Humanoid")
+	local conn
+
+	conn = hum.AnimationPlayed:Connect(function(track)
+		if track.Animation and track.Animation.AnimationId == targetAnimationId then
+			track:Stop()
+			pcall(function() track:Destroy() end)
+		end
+	end)
+
+	local loop = task.spawn(function()
+		while hum.Parent do
+			stopBlockAnimations(hum)
+			task.wait(0.05)
+		end
+	end)
+
+	char.AncestryChanged:Connect(function(_, parent)
+		if not parent and conn then
+			conn:Disconnect()
+			task.cancel(loop)
+		end
+	end)
+end
+
+if player.Character then
+	setup(player.Character)
+end
+player.CharacterAdded:Connect(setup)
