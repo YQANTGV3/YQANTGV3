@@ -20,7 +20,6 @@ local function useRemote()
 end
 
 local function stepBack()
-	if not _G._AutoTwisted_Enabled then return end
 	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	if hrp then
 		hrp.CFrame = hrp.CFrame * CFrame.new(0, 0, 3.4)
@@ -35,12 +34,12 @@ local function bindAnimationDetection()
 		if not _G._AutoTwisted_Enabled then return end
 		if track.Animation and track.Animation.AnimationId == animationId and not cooldown then
 			cooldown = true
+
 			task.delay(delayBeforeRemote, function()
-				if _G._AutoTwisted_Enabled then
-					stepBack()
-					useRemote()
-				end
+				stepBack()
+				useRemote()
 			end)
+
 			task.delay(5, function()
 				cooldown = false
 			end)
@@ -48,7 +47,6 @@ local function bindAnimationDetection()
 	end)
 end
 
--- Kết nối khi bật
 bindAnimationDetection()
 
 _G._TwistedCharConn = player.CharacterAdded:Connect(function()
