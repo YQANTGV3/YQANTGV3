@@ -1,0 +1,4 @@
+if _G.BlockAnimConnection then
+	_G.BlockAnimConnection:Disconnect()
+	_G.BlockAnimConnection = nil
+end
