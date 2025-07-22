@@ -1,0 +1,71 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+local lp = Players.LocalPlayer
+local cam = workspace.CurrentCamera
+local gui = lp:WaitForChild("PlayerGui")
+
+local jumpBtn = gui:FindFirstChild("JumpButton", true)
+local punchBtn = jumpBtn and jumpBtn:FindFirstChild("PunchButton")
+
+_G.TweenReachHold = true
+_G.TweenReachLooping = false
+
+local function getClosestTarget()
+	local live = workspace:FindFirstChild("Live")
+	if not live then return end
+
+	local closest, shortest = nil, 50
+	for _, model in ipairs(live:GetChildren()) do
+		if model:IsA("Model") and model ~= lp.Character and model:FindFirstChild("HumanoidRootPart") and model:FindFirstChild("Humanoid") then
+			if model.Humanoid.Health > 0 then
+				local dist = (lp.Character.HumanoidRootPart.Position - model.HumanoidRootPart.Position).Magnitude
+				if dist <= shortest then
+					shortest = dist
+					closest = model
+				end
+			end
+		end
+	end
+	return closest
+end
+
+local function dashToTarget(target)
+	local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+	if not hrp or not target then return end
+	local pos = target:FindFirstChild("HumanoidRootPart") and target.HumanoidRootPart.Position
+	if not pos then return end
+	local dir = (pos - hrp.Position).Unit
+	local dest = pos - dir * 2
+	local tween = TweenService:Create(hrp, TweenInfo.new(0.15, Enum.EasingStyle.Linear), {
+		CFrame = CFrame.new(dest)
+	})
+	tween:Play()
+end
+
+local function startLoop()
+	if _G.TweenReachLooping then return end
+	_G.TweenReachLooping = true
+	while _G.TweenReachHold do
+		local target = getClosestTarget()
+		if target then
+			dashToTarget(target)
+		end
+		task.wait(0.15)
+	end
+	_G.TweenReachLooping = false
+end
+
+if punchBtn then
+	punchBtn.MouseButton1Down:Connect(function()
+		_G.TweenReachHold = true
+		startLoop()
+	end)
+
+	punchBtn.MouseButton1Up:Connect(function()
+		_G.TweenReachHold = false
+	end)
+else
+	warn("❌ Không tìm thấy PunchButton!")
+end
