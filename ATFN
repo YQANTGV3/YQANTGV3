@@ -1,0 +1,170 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local keyCodes = { Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four }
+
+local stickOn = true
+local target, connection, spamConnection, velocity, gyro
+local noclipConnection
+local oldCFrame
+local oldCameraType
+
+-- Noclip
+local function enableNoclip()
+	local char = player.Character
+	if not char then return end
+	noclipConnection = RunService.Stepped:Connect(function()
+		for _, part in ipairs(char:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+			end
+		end
+	end)
+end
+
+local function disableNoclip()
+	if noclipConnection then
+		noclipConnection:Disconnect()
+		noclipConnection = nil
+	end
+	local char = player.Character
+	if char then
+		for _, part in ipairs(char:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = true
+			end
+		end
+	end
+end
+
+-- Tìm player gần nhất
+local function findClosestPlayer()
+	local char = player.Character
+	if not char then return end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
+	local closest = nil
+	local shortest = math.huge
+	for _, p in pairs(Players:GetPlayers()) do
+		if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") then
+			local dist = (p.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
+			if dist < 10000 and p.Character.Humanoid.Health > 0 and dist < shortest then
+				shortest = dist
+				closest = p
+			end
+		end
+	end
+	return closest
+end
+
+-- Spam key + remote
+local function startSpamming()
+	local char = player.Character
+	if not char then return end
+	spamConnection = RunService.Heartbeat:Connect(function()
+		for _, key in ipairs(keyCodes) do
+			VirtualInputManager:SendKeyEvent(true, key, false, game)
+			task.wait(0.01)
+			VirtualInputManager:SendKeyEvent(false, key, false, game)
+		end
+
+		char:WaitForChild("Communicate"):FireServer({
+			Goal = "LeftClick",
+			Mobile = true
+		})
+	end)
+end
+
+local function stopSpamming()
+	if spamConnection then
+		spamConnection:Disconnect()
+		spamConnection = nil
+	end
+	local char = player.Character
+	if not char then return end
+	char:WaitForChild("Communicate"):FireServer({
+		Goal = "LeftClickRelease",
+		Mobile = true
+	})
+end
+
+-- Stick
+local function stickToTarget()
+	local char = player.Character
+	if not char then return end
+	local humanoidRootPart = char:WaitForChild("HumanoidRootPart")
+	oldCFrame = humanoidRootPart.CFrame
+	oldCameraType = camera.CameraType
+	camera.CameraType = Enum.CameraType.Scriptable
+
+	enableNoclip()
+	startSpamming()
+
+	velocity = Instance.new("BodyVelocity")
+	velocity.MaxForce = Vector3.new(1e6, 1e6, 1e6)
+	velocity.P = 10000
+	velocity.Velocity = Vector3.zero
+	velocity.Parent = humanoidRootPart
+
+	gyro = Instance.new("BodyGyro")
+	gyro.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
+	gyro.P = 5000
+	gyro.CFrame = humanoidRootPart.CFrame
+	gyro.Parent = humanoidRootPart
+
+	connection = RunService.RenderStepped:Connect(function()
+		if not stickOn then return end
+
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+		if not hrp then return end
+
+		if not target or not target.Character or not target.Character:FindFirstChild("HumanoidRootPart") or target.Character.Humanoid.Health <= 0 then
+			target = findClosestPlayer()
+		end
+
+		if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+			local to = target.Character.HumanoidRootPart.Position
+			local from = hrp.Position
+			local followPos = to - Vector3.new(0, 7, 0)
+
+			velocity.Velocity = (followPos - from) * 10
+			gyro.CFrame = CFrame.new(from, followPos)
+
+			local camOffset = Vector3.new(0, 14, 20)
+			camera.CFrame = CFrame.new(to + camOffset, to)
+		end
+	end)
+end
+
+-- Unstick
+local function unstick()
+	if connection then connection:Disconnect() connection = nil end
+	disableNoclip()
+	stopSpamming()
+	if velocity then velocity:Destroy() velocity = nil end
+	if gyro then gyro:Destroy() gyro = nil end
+	local char = player.Character
+	if char and char:FindFirstChild("HumanoidRootPart") and oldCFrame then
+		char.HumanoidRootPart.CFrame = oldCFrame
+	end
+	if oldCameraType then
+		camera.CameraType = oldCameraType
+	end
+	target = nil
+end
+
+-- ✅ Auto stick khi bật
+task.spawn(function()
+	stickToTarget()
+end)
+
+-- ✅ Hàm cleanup khi Toggle tắt
+_G.StickFarmOn = true
+_G.StickFarmCleanup = function()
+	stickOn = false
+	unstick()
+end
