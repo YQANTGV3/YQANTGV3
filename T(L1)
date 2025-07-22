@@ -1,0 +1,58 @@
+_G._AutoTwisted_Enabled = true
+
+local player = game.Players.LocalPlayer
+local animationId = "rbxassetid://13294471966"
+local delayBeforeRemote = 0.23
+local cooldown = false
+
+local function useRemote()
+	if not _G._AutoTwisted_Enabled then return end
+	local char = player.Character
+	if char and char:FindFirstChild("Communicate") then
+		char.Communicate:FireServer({
+			[1] = {
+				["Dash"] = Enum.KeyCode.W,
+				["Key"] = Enum.KeyCode.Q,
+				["Goal"] = "KeyPress"
+			}
+		})
+	end
+end
+
+local function stepBack()
+	if not _G._AutoTwisted_Enabled then return end
+	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if hrp then
+		hrp.CFrame = hrp.CFrame * CFrame.new(0, 0, 3.4)
+	end
+end
+
+local function bindAnimationDetection()
+	local char = player.Character or player.CharacterAdded:Wait()
+	local humanoid = char:WaitForChild("Humanoid")
+
+	_G._TwistedAnimConn = humanoid.AnimationPlayed:Connect(function(track)
+		if not _G._AutoTwisted_Enabled then return end
+		if track.Animation and track.Animation.AnimationId == animationId and not cooldown then
+			cooldown = true
+			task.delay(delayBeforeRemote, function()
+				if _G._AutoTwisted_Enabled then
+					stepBack()
+					useRemote()
+				end
+			end)
+			task.delay(5, function() cooldown = false end)
+		end
+	end)
+end
+
+-- Kết nối ban đầu
+bindAnimationDetection()
+
+-- Kết nối lại nếu chết
+_G._TwistedCharConn = player.CharacterAdded:Connect(function()
+	task.wait(1)
+	if _G._AutoTwisted_Enabled then
+		bindAnimationDetection()
+	end
+end)
