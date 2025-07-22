@@ -1,7 +1,7 @@
 _G._AutoTornado_Enabled = true
 
 local player = game.Players.LocalPlayer
-local animationId = "rbxassetid://[REPLACE_THIS_WITH_ANIMATION_ID]" -- ví dụ: "rbxassetid://1234567890"
+local animationId = "rbxassetid://13294471966" -- ví dụ: "rbxassetid://1234567890"
 local delayBeforeRemote = 0.25
 local cooldown = false
 
