@@ -1,0 +1,4 @@
+if _G.FaceCamConnection then
+	_G.FaceCamConnection:Disconnect()
+	_G.FaceCamConnection = nil
+end
