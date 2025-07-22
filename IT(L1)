@@ -1,0 +1,114 @@
+if not _G.InstantTwisted then return end
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HRP = Character:WaitForChild("HumanoidRootPart")
+local Humanoid = Character:WaitForChild("Humanoid")
+
+local ANIM_ID_TRIGGER = "rbxassetid://13294471966"
+local ENABLED = true
+local OnCooldown = false
+
+local function getClosestInFront(maxDist)
+	local live = workspace:FindFirstChild("Live")
+	if not live then return nil end
+	local closest, minDist = nil, maxDist or math.huge
+	local forward = HRP.CFrame.LookVector
+
+	for _, model in ipairs(live:GetChildren()) do
+		if model:IsA("Model") and model ~= Character then
+			local root = model:FindFirstChild("HumanoidRootPart")
+			if root and (model.Name == "Weakest Dummy" or Players:GetPlayerFromCharacter(model)) then
+				local dir = (root.Position - HRP.Position).Unit
+				local dot = forward:Dot(dir)
+				local dist = (root.Position - HRP.Position).Magnitude
+				if dot > 0.5 and dist <= minDist then
+					closest = root
+					minDist = dist
+				end
+			end
+		end
+	end
+	return closest
+end
+
+local function getClosest()
+	return getClosestInFront(1000)
+end
+
+local function tempNoCollide()
+	local live = workspace:FindFirstChild("Live")
+	if not live then return end
+
+	local toRestore = {}
+
+	for _, model in pairs(live:GetChildren()) do
+		if model:IsA("Model") and model ~= Character then
+			if model.Name == "Weakest Dummy" or Players:GetPlayerFromCharacter(model) then
+				for _, part in ipairs(model:GetDescendants()) do
+					if part:IsA("BasePart") and part.CanCollide then
+						part.CanCollide = false
+						table.insert(toRestore, part)
+					end
+				end
+			end
+		end
+	end
+
+	task.delay(1, function()
+		for _, part in ipairs(toRestore) do
+			if part:IsA("BasePart") then
+				part.CanCollide = true
+			end
+		end
+	end)
+end
+
+local function onAnimPlay(animId)
+	if animId == ANIM_ID_TRIGGER and not OnCooldown then
+		OnCooldown = true
+
+		local target = getClosest()
+		if target then
+			tempNoCollide()
+			local dest = target.Position - (target.CFrame.LookVector * 1.5)
+			local tween = TweenService:Create(HRP, TweenInfo.new(0.25, Enum.EasingStyle.Sine), { CFrame = CFrame.new(dest) })
+			tween:Play()
+		end
+
+		task.delay(2.5, function()
+			OnCooldown = false
+		end)
+	end
+end
+
+local function watchAnimations()
+	local hum = Character:FindFirstChild("Humanoid")
+	if not hum then return end
+
+	local animator = hum:FindFirstChildOfClass("Animator")
+	if not animator then return end
+
+	animator.AnimationPlayed:Connect(function(track)
+		if _G.InstantTwisted then
+			onAnimPlay(track.Animation.AnimationId)
+		end
+	end)
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+	Character = char
+	HRP = char:WaitForChild("HumanoidRootPart")
+	Humanoid = char:WaitForChild("Humanoid")
+	if _G.InstantTwisted then
+		watchAnimations()
+	end
+end)
+
+if _G.InstantTwisted then
+	watchAnimations()
+end
