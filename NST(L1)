@@ -1,0 +1,20 @@
+local player = game.Players.LocalPlayer
+local runService = game:GetService("RunService")
+
+_G.NoStunConnection = runService.RenderStepped:Connect(function()
+	local char = player.Character
+	if not char then return end
+
+	local stunned = char:FindFirstChild("Stunned")
+	if stunned then
+		stunned:Destroy()
+	end
+
+	local hum = char:FindFirstChild("Humanoid")
+	if hum then
+		hum.PlatformStand = false
+		if hum.WalkSpeed == 0 then
+			hum.WalkSpeed = 20
+		end
+	end
+end)
