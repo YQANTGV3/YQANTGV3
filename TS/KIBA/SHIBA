@@ -3,9 +3,10 @@ _G._AutoTwisted_Enabled = true
 local player = game.Players.LocalPlayer
 local animationId = "rbxassetid://13294471966"
 local delayBeforeRemote = 0.23
-local cooldown = false
+_G._TwistedCooldown = false
 
-local function useRemote()
+-- ✅ Gán vào _G để không mất
+_G._TwistedUseRemote = function()
 	if not _G._AutoTwisted_Enabled then return end
 	local char = player.Character
 	if char and char:FindFirstChild("Communicate") then
@@ -19,7 +20,7 @@ local function useRemote()
 	end
 end
 
-local function stepBack()
+_G._TwistedStepBack = function()
 	if not _G._AutoTwisted_Enabled then return end
 	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	if hrp then
@@ -27,32 +28,31 @@ local function stepBack()
 	end
 end
 
-local function bindAnimationDetection()
+_G._BindTwistedAnim = function()
 	local char = player.Character or player.CharacterAdded:Wait()
 	local humanoid = char:WaitForChild("Humanoid")
 
 	_G._TwistedAnimConn = humanoid.AnimationPlayed:Connect(function(track)
 		if not _G._AutoTwisted_Enabled then return end
-		if track.Animation and track.Animation.AnimationId == animationId and not cooldown then
-			cooldown = true
+		if track.Animation and track.Animation.AnimationId == animationId and not _G._TwistedCooldown then
+			_G._TwistedCooldown = true
 			task.delay(delayBeforeRemote, function()
-				if _G._AutoTwisted_Enabled then
-					stepBack()
-					useRemote()
-				end
+				_G._TwistedStepBack()
+				_G._TwistedUseRemote()
 			end)
-			task.delay(5, function() cooldown = false end)
+			task.delay(5, function()
+				_G._TwistedCooldown = false
+			end)
 		end
 	end)
 end
 
--- Kích hoạt lần đầu
-bindAnimationDetection()
+-- Bắt đầu
+_G._BindTwistedAnim()
 
--- Gán lại nếu respawn
 _G._TwistedCharConn = player.CharacterAdded:Connect(function()
 	task.wait(1)
 	if _G._AutoTwisted_Enabled then
-		bindAnimationDetection()
+		_G._BindTwistedAnim()
 	end
 end)
