@@ -1,0 +1,15 @@
+local player = game.Players.LocalPlayer
+local runService = game:GetService("RunService")
+
+_G.NoSlowedConnection = runService.RenderStepped:Connect(function()
+	local char = player.Character
+	if not char then return end
+
+	local hum = char:FindFirstChild("Humanoid")
+	if hum then
+		if hum.WalkSpeed < 20 then
+			hum.WalkSpeed = 22
+		end
+		hum.PlatformStand = false
+	end
+end)
