@@ -1,0 +1,14 @@
+-- Gỡ toàn bộ kết nối và dừng loop
+for _, conn in ipairs(getconnections(game.Players.LocalPlayer.CharacterAdded)) do
+	conn:Disable()
+end
+
+local char = game.Players.LocalPlayer.Character
+if char then
+	local hum = char:FindFirstChild("Humanoid")
+	if hum then
+		for _, conn in ipairs(getconnections(hum.AnimationPlayed)) do
+			conn:Disable()
+		end
+	end
+end
