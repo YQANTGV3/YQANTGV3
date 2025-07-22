@@ -1,21 +1,29 @@
-_G._AutoTornado_Enabled = true
+_G._AutoTwisted_Enabled = true
 
 local player = game.Players.LocalPlayer
-local animationId = "rbxassetid://13294471966" -- ví dụ: "rbxassetid://1234567890"
-local delayBeforeRemote = 0.25
+local animationId = "rbxassetid://13294471966"
+local delayBeforeRemote = 0.23
 local cooldown = false
 
 local function useRemote()
-	if not _G._AutoTornado_Enabled then return end
+	if not _G._AutoTwisted_Enabled then return end
 	local char = player.Character
 	if char and char:FindFirstChild("Communicate") then
 		char.Communicate:FireServer({
 			[1] = {
 				["Dash"] = Enum.KeyCode.W,
-				["Key"] = Enum.KeyCode.E,
+				["Key"] = Enum.KeyCode.Q,
 				["Goal"] = "KeyPress"
 			}
 		})
+	end
+end
+
+local function stepBack()
+	if not _G._AutoTwisted_Enabled then return end
+	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if hrp then
+		hrp.CFrame = hrp.CFrame * CFrame.new(0, 0, 3.4)
 	end
 end
 
@@ -23,27 +31,29 @@ local function bindAnimationDetection()
 	local char = player.Character or player.CharacterAdded:Wait()
 	local humanoid = char:WaitForChild("Humanoid")
 
-	_G._TornadoAnimConn = humanoid.AnimationPlayed:Connect(function(track)
-		if not _G._AutoTornado_Enabled then return end
+	_G._TwistedAnimConn = humanoid.AnimationPlayed:Connect(function(track)
+		if not _G._AutoTwisted_Enabled then return end
 		if track.Animation and track.Animation.AnimationId == animationId and not cooldown then
 			cooldown = true
 			task.delay(delayBeforeRemote, function()
-				if _G._AutoTornado_Enabled then
+				if _G._AutoTwisted_Enabled then
+					stepBack()
 					useRemote()
 				end
 			end)
-			task.delay(5, function() cooldown = false end)
+			task.delay(5, function()
+				cooldown = false
+			end)
 		end
 	end)
 end
 
--- Gọi lần đầu
+-- Kết nối khi bật
 bindAnimationDetection()
 
--- Nếu chết thì gán lại
-_G._TornadoCharConn = player.CharacterAdded:Connect(function()
+_G._TwistedCharConn = player.CharacterAdded:Connect(function()
 	task.wait(1)
-	if _G._AutoTornado_Enabled then
+	if _G._AutoTwisted_Enabled then
 		bindAnimationDetection()
 	end
 end)
