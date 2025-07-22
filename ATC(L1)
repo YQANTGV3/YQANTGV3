@@ -1,0 +1,95 @@
+-- Auto Counter Skill + M1 (L1)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HRP = Character:WaitForChild("HumanoidRootPart")
+local Communicate = Character:WaitForChild("Communicate")
+local Live = workspace:WaitForChild("Live")
+
+_G.AutoReact = true
+
+local delayed = {
+   ["rbxassetid://10479335397"] = true,
+   ["rbxassetid://13380255751"] = true,
+   ["rbxassetid://134775406437626"] = true,
+}
+
+local normal = {
+   ["rbxassetid://10469493270"] = true, ["rbxassetid://10469630950"] = true, ["rbxassetid://10469639222"] = true,
+   ["rbxassetid://10469643643"] = true, ["rbxassetid://13532562418"] = true, ["rbxassetid://13532600125"] = true,
+   ["rbxassetid://13532604085"] = true, ["rbxassetid://13294471966"] = true, ["rbxassetid://13491635433"] = true,
+   ["rbxassetid://13296577783"] = true, ["rbxassetid://13295919399"] = true, ["rbxassetid://13295936866"] = true,
+   ["rbxassetid://13370310513"] = true, ["rbxassetid://13390230973"] = true, ["rbxassetid://13378751717"] = true,
+   ["rbxassetid://13378708199"] = true, ["rbxassetid://14004222985"] = true, ["rbxassetid://13997092940"] = true,
+   ["rbxassetid://14001963401"] = true, ["rbxassetid://14136436157"] = true, ["rbxassetid://15259161390"] = true,
+   ["rbxassetid://15240216931"] = true, ["rbxassetid://15240176873"] = true, ["rbxassetid://15162694192"] = true,
+   ["rbxassetid://16515503507"] = true, ["rbxassetid://16515520431"] = true, ["rbxassetid://16515448089"] = true,
+   ["rbxassetid://16552234590"] = true, ["rbxassetid://17889458563"] = true, ["rbxassetid://17889461810"] = true,
+   ["rbxassetid://17889471098"] = true, ["rbxassetid://17889290569"] = true, ["rbxassetid://123005629431309"] = true,
+   ["rbxassetid://100059874351664"] = true, ["rbxassetid://104895379416342"] = true,
+}
+
+local more = {
+   ["rbxassetid://10468665991"] = true, ["rbxassetid://10466974800"] = true, ["rbxassetid://10471336737"] = true,
+   ["rbxassetid://12510170988"] = true, ["rbxassetid://12272894215"] = true, ["rbxassetid://12296882427"] = true,
+   ["rbxassetid://12307656616"] = true, ["rbxassetid://101588604872680"] = true, ["rbxassetid://105442749844047"] = true,
+   ["rbxassetid://109617620932970"] = true, ["rbxassetid://131820095363270"] = true, ["rbxassetid://135289891173395"] = true,
+   ["rbxassetid://125955606488863"] = true, ["rbxassetid://12534735382"] = true, ["rbxassetid://12502664044"] = true,
+   ["rbxassetid://12509505723"] = true, ["rbxassetid://12618271998"] = true, ["rbxassetid://12684390285"] = true,
+   ["rbxassetid://13376869471"] = true, ["rbxassetid://13294790250"] = true, ["rbxassetid://13376962659"] = true,
+   ["rbxassetid://13501296372"] = true, ["rbxassetid://13556985475"] = true, ["rbxassetid://145162735010"] = true,
+   ["rbxassetid://14046756619"] = true, ["rbxassetid://14299135500"] = true, ["rbxassetid://14351441234"] = true,
+   ["rbxassetid://15290930205"] = true, ["rbxassetid://15145462680"] = true, ["rbxassetid://15295895753"] = true,
+   ["rbxassetid://15295336270"] = true, ["rbxassetid://16139108718"] = true, ["rbxassetid://16515850153"] = true,
+   ["rbxassetid://16431491215"] = true, ["rbxassetid://16597322398"] = true, ["rbxassetid://16597912086"] = true,
+   ["rbxassetid://17799224866"] = true, ["rbxassetid://17838006839"] = true, ["rbxassetid://17857788598"] = true,
+   ["rbxassetid://18179181663"] = true, ["rbxassetid://113166426814229"] = true, ["rbxassetid://116753755471636"] = true,
+   ["rbxassetid://116153572280464"] = true, ["rbxassetid://114095570398448"] = true, ["rbxassetid://77509627104305"] = true,
+}
+
+for id in pairs(more) do normal[id] = true end
+local activated = {}
+
+local function closeEnough(a, b, dist)
+   return (a - b).Magnitude <= dist
+end
+
+local function fire()
+   local prey = LocalPlayer.Backpack:FindFirstChild("Prey's Peril")
+   if prey then Communicate:FireServer({ Tool = prey, Goal = "Console Move" }) end
+
+   local split = LocalPlayer.Backpack:FindFirstChild("Split Second Counter")
+   if split then Communicate:FireServer({ Tool = split, Goal = "Console Move" }) end
+end
+
+RunService.Heartbeat:Connect(function()
+   if not _G.AutoReact then return end
+
+   for _, model in pairs(Live:GetChildren()) do
+      if model:IsA("Model") and model ~= Character and model:FindFirstChild("HumanoidRootPart") then
+         local hum = model:FindFirstChildOfClass("Humanoid")
+         local anim = hum and hum:FindFirstChildOfClass("Animator")
+         if anim then
+            for _, track in pairs(anim:GetPlayingAnimationTracks()) do
+               local id = track.Animation.AnimationId
+               local key = model:GetDebugId() .. id
+               local dist = (delayed[id] and 13) or 13
+               task.wait(0.0001)
+               if (delayed[id] or normal[id]) and closeEnough(HRP.Position, model.HumanoidRootPart.Position, dist) then
+                  if not activated[key] then
+                     activated[key] = true
+                     if delayed[id] then
+                        task.delay(0.0001, fire)
+                     else
+                        fire()
+                     end
+                  end
+               else
+                  activated[key] = nil
+               end
+            end
+         end
+      end
+   end
+end)
