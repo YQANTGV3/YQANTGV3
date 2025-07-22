@@ -59,7 +59,7 @@ end
 
 if punchBtn then
 	punchBtn.MouseButton1Down:Connect(function()
-		_G.TweenReachHold = true
+		if not _G.TweenReachHold then return end -- ✅ Fix toggle bị override
 		startLoop()
 	end)
 
