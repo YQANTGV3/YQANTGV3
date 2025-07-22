@@ -1,0 +1,36 @@
+local lp = game.Players.LocalPlayer
+local runService = game:GetService("RunService")
+
+local blockedIds = {
+	"12447707844",
+	"12342141464",
+	"12772543293"
+}
+
+local function isBlocked(animationId)
+	for _, id in pairs(blockedIds) do
+		if animationId:find(id) then
+			return true
+		end
+	end
+	return false
+end
+
+_G.BlockAnimConnection = runService.Stepped:Connect(function()
+	local char = lp.Character
+	if not char then return end
+
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		local animator = humanoid:FindFirstChildOfClass("Animator")
+		if animator then
+			for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+				local anim = track.Animation
+				if anim and isBlocked(anim.AnimationId) then
+					track:Stop(0)
+					pcall(function() track:Destroy() end)
+				end
+			end
+		end
+	end
+end)
