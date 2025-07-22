@@ -1,0 +1,4 @@
+if _G.NoSlowedConnection then
+	_G.NoSlowedConnection:Disconnect()
+	_G.NoSlowedConnection = nil
+end
