@@ -1,0 +1,122 @@
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local Camera = Workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+local motionBlur = Instance.new("BlurEffect")
+motionBlur.Name = "MotionBlur"
+motionBlur.Size = 5
+motionBlur.Parent = Lighting
+
+local lastLookVector = Camera.CFrame.LookVector
+
+_G.UltraShaderConn = RunService.RenderStepped:Connect(function()
+	local currentLook = Camera.CFrame.LookVector
+	local delta = (currentLook - lastLookVector).Magnitude
+	lastLookVector = currentLook
+
+	local rightVector = Camera.CFrame.RightVector
+	local angleOffset = math.abs(currentLook:Dot(rightVector))
+	local blurAmount = math.clamp(angleOffset * delta * 800, 0, 40)
+
+	motionBlur.Size = blurAmount + 4
+end)
+
+local sky = Instance.new("Sky", Lighting)
+sky.SkyboxBk = "rbxassetid://7115316513"
+sky.SkyboxDn = "rbxassetid://7115316904"
+sky.SkyboxFt = "rbxassetid://7115317252"
+sky.SkyboxLf = "rbxassetid://7115317606"
+sky.SkyboxRt = "rbxassetid://7115317973"
+sky.SkyboxUp = "rbxassetid://7115318319"
+sky.SunAngularSize = 21
+sky.MoonAngularSize = 11
+sky.StarCount = 3000
+
+Lighting.ClockTime = 12
+Lighting.Brightness = 3
+Lighting.GlobalShadows = true
+Lighting.OutdoorAmbient = Color3.fromRGB(135, 148, 178)
+Lighting.FogEnd = 800
+Lighting.FogStart = 0
+Lighting.FogColor = Color3.fromRGB(200, 220, 250)
+
+local bloom = Instance.new("BloomEffect", Lighting)
+bloom.Intensity = 2.6
+bloom.Size = 100
+bloom.Threshold = 1
+
+local sunrays = Instance.new("SunRaysEffect", Lighting)
+sunrays.Intensity = 0.55
+sunrays.Spread = 2.2
+
+local cc = Instance.new("ColorCorrectionEffect", Lighting)
+cc.Brightness = 0.18
+cc.Contrast = 0.2
+cc.Saturation = 0.3
+cc.TintColor = Color3.fromRGB(255, 230, 180)
+
+local atmo = Instance.new("Atmosphere", Lighting)
+atmo.Density = 0.30
+atmo.Offset = 0.8
+atmo.Glare = 0.3
+atmo.Haze = 1.5
+atmo.Color = Color3.fromRGB(200, 220, 255)
+atmo.Decay = Color3.fromRGB(180, 190, 290)
+
+local sun = Instance.new("Part")
+sun.Name = "FakeSun"
+sun.Size = Vector3.new(15, 15, 15)
+sun.Shape = Enum.PartType.Ball
+sun.Anchored = true
+sun.CanCollide = true
+sun.Material = Enum.Material.Neon
+sun.Color = Color3.fromRGB(255, 240, 180)
+sun.Position = Camera.CFrame.Position + Vector3.new(0, 300, 500)
+sun.Parent = workspace
+
+local light = Instance.new("SurfaceLight", sun)
+light.Brightness = 3
+light.Range = 100
+light.Angle = 180
+light.Face = Enum.NormalId.Top
+light.Color = Color3.fromRGB(255, 220, 150)
+
+local beam = Instance.new("ParticleEmitter", sun)
+beam.LightEmission = 10
+beam.LightInfluence = 10
+beam.Texture = "rbxassetid://259703948"
+beam.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 6), NumberSequenceKeypoint.new(1, 0)})
+beam.Transparency = NumberSequence.new(0.1)
+beam.Rate = 100
+beam.Speed = NumberRange.new(0)
+beam.Lifetime = NumberRange.new(1)
+beam.Color = ColorSequence.new(Color3.fromRGB(255, 220, 150))
+
+local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local reflectionModel = character:Clone()
+reflectionModel.Name = "Reflection"
+reflectionModel.Parent = workspace
+_G.UltraShaderReflect = reflectionModel
+
+for _, part in ipairs(reflectionModel:GetDescendants()) do
+	if part:IsA("BasePart") then
+		part.Anchored = true
+		part.CanCollide = false
+		part.Material = Enum.Material.SmoothPlastic
+		part.Transparency = 0.4
+	end
+end
+
+task.spawn(function()
+	while reflectionModel and reflectionModel.Parent do
+		local root = character:FindFirstChild("HumanoidRootPart")
+		local refRoot = reflectionModel:FindFirstChild("HumanoidRootPart")
+		if root and refRoot then
+			reflectionModel:SetPrimaryPartCFrame(CFrame.new(Vector3.new(root.Position.X, -root.Position.Y + 1, root.Position.Z)) * CFrame.Angles(math.rad(180), 0, 0))
+		end
+		task.wait(0.03)
+	end
+end)
