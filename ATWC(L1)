@@ -1,0 +1,246 @@
+_G.AutoWallCombo = true
+_G.BurrowRunning = false
+
+local player = game.Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+-- GUI
+local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+screenGui.Name = "StickGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+local cooldownFrame = Instance.new("Frame", screenGui)
+cooldownFrame.Size = UDim2.new(0, 240, 0, 25)
+cooldownFrame.Position = UDim2.new(0.5, -130, 0.6, 0)
+cooldownFrame.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+cooldownFrame.BackgroundTransparency = 0.2
+cooldownFrame.Visible = false
+Instance.new("UICorner", cooldownFrame).CornerRadius = UDim.new(0, 8)
+
+local loadingBar = Instance.new("Frame", cooldownFrame)
+loadingBar.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+loadingBar.Size = UDim2.new(0, 0, 1, 0)
+loadingBar.Position = UDim2.new(0, 0, 0, 0)
+Instance.new("UICorner", loadingBar).CornerRadius = UDim.new(0, 8)
+
+local cooldownText = Instance.new("TextLabel", cooldownFrame)
+cooldownText.BackgroundTransparency = 1
+cooldownText.Size = UDim2.new(1, 0, 1, 0)
+cooldownText.TextColor3 = Color3.new(1, 1, 1)
+cooldownText.Font = Enum.Font.GothamSemibold
+cooldownText.TextScaled = true
+cooldownText.Text = ""
+
+-- Biến
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local animationConnection = nil
+local spamThread = nil
+local noclipConnection = nil
+local isCooldown = false
+
+-- Danh sách animation
+local burrowAnimations = {
+	"10469643643", "10469639222", "13532604085", "13294471966", "13295919399", "13295936866",
+	"13378751717", "13378708199", "14001963401", "14136436157", "15240176873", "15162694192",
+	"16515448089", "16552234590", "17889471098", "17889290569", "104895379416342", "134775406437626"
+}
+
+local triggerRemoteAnimations = {
+	["rbxassetid://10469639222"] = true, ["rbxassetid://13532604085"] = true,
+	["rbxassetid://13295919399"] = true, ["rbxassetid://13378751717"] = true,
+	["rbxassetid://14001963401"] = true, ["rbxassetid://15240176873"] = true,
+	["rbxassetid://16515448089"] = true, ["rbxassetid://17889471098"] = true,
+	["rbxassetid://104895379416342"] = true
+}
+
+local function isBurrowAnimation(animID)
+	return table.find(burrowAnimations, animID:gsub("rbxassetid://", "")) ~= nil
+end
+
+local function enableNoclip(char)
+	noclipConnection = RunService.Stepped:Connect(function()
+		for _, part in ipairs(char:GetDescendants()) do
+			if part:IsA("BasePart") then part.CanCollide = false end
+		end
+	end)
+end
+
+local function disableNoclip(char)
+	if noclipConnection then
+		noclipConnection:Disconnect()
+		noclipConnection = nil
+	end
+	for _, part in ipairs(char:GetDescendants()) do
+		if part:IsA("BasePart") then part.CanCollide = true end
+	end
+end
+
+local function holdY(hrp, y)
+	return RunService.RenderStepped:Connect(function()
+		local pos = hrp.Position
+		hrp.Velocity = Vector3.zero
+		hrp.AssemblyLinearVelocity = Vector3.zero
+		hrp.CFrame = CFrame.new(Vector3.new(pos.X, y, pos.Z), pos + hrp.CFrame.LookVector)
+	end)
+end
+
+local function getNearbyTargets(char, radius)
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return {} end
+	local targets = {}
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("Model") and obj ~= char and obj:FindFirstChild("HumanoidRootPart") and obj:FindFirstChildOfClass("Humanoid") then
+			if (obj.HumanoidRootPart.Position - hrp.Position).Magnitude <= radius then
+				table.insert(targets, obj)
+			end
+		end
+	end
+	return targets
+end
+
+local function startSpam()
+	if spamThread then task.cancel(spamThread) end
+	spamThread = task.spawn(function()
+		while _G.AutoWallCombo do
+			pcall(function()
+				if player.Character and player.Character:FindFirstChild("Communicate") then
+					player.Character.Communicate:FireServer({ Goal = "Wall Combo" })
+				end
+			end)
+			task.wait(0.05)
+		end
+	end)
+end
+
+local function startCooldown()
+	isCooldown = true
+	cooldownFrame.Visible = true
+	loadingBar.Size = UDim2.new(0, 0, 1, 0)
+	cooldownText.Text = "Cooldown: 15s"
+
+	local tween = TweenService:Create(loadingBar, TweenInfo.new(15, Enum.EasingStyle.Linear), {
+		Size = UDim2.new(1, 0, 1, 0)
+	})
+	tween:Play()
+
+	for i = 10, 0, -1 do
+		cooldownText.Text = "Wallcombo: " .. i .. "s"
+		task.wait(1)
+	end
+
+	cooldownFrame.Visible = false
+	cooldownText.Text = ""
+	loadingBar.Size = UDim2.new(0, 0, 1, 0)
+	isCooldown = false
+end
+
+local function burrowUnderTarget(char, target)
+	if isCooldown then return end
+	isCooldown = true
+
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local tHrp = target:FindFirstChild("HumanoidRootPart")
+	if not hrp or not hum or not tHrp then isCooldown = false return end
+
+	hum.PlatformStand = false
+	hum.Sit = false
+	enableNoclip(char)
+
+	local cam = workspace.CurrentCamera
+	local oldCamType = cam.CameraType
+	cam.CameraType = Enum.CameraType.Scriptable
+
+	local y = tHrp.Position.Y - 4.7
+	hrp.CFrame = CFrame.new(Vector3.new(tHrp.Position.X, y, tHrp.Position.Z))
+	local holdConn = holdY(hrp, y)
+
+	local bodyPos = Instance.new("BodyPosition")
+	bodyPos.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+	bodyPos.P = 3000
+	bodyPos.D = 100
+	bodyPos.Position = tHrp.Position - Vector3.new(0, 4.7, 0)
+	bodyPos.Parent = hrp
+
+	local bodyGyro = Instance.new("BodyGyro")
+	bodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+	bodyGyro.P = 3000
+	bodyGyro.CFrame = hrp.CFrame
+	bodyGyro.Parent = hrp
+
+	local followConn = RunService.Heartbeat:Connect(function()
+		if tHrp and bodyPos then
+			bodyPos.Position = tHrp.Position - Vector3.new(0, 4.7, 0)
+			bodyGyro.CFrame = CFrame.new(hrp.Position, tHrp.Position)
+		end
+	end)
+
+	task.delay(0.28, function()
+		cam.CameraType = oldCamType
+	end)
+
+	task.wait(0.7)
+
+	if holdConn then holdConn:Disconnect() end
+	if followConn then followConn:Disconnect() end
+	if bodyPos then bodyPos:Destroy() end
+	if bodyGyro then bodyGyro:Destroy() end
+
+	disableNoclip(char)
+	task.delay(3, function()
+		startCooldown()
+	end)
+end
+
+local function connectAnimationWatcher()
+	if animationConnection then animationConnection:Disconnect() end
+	local hum = character:WaitForChild("Humanoid")
+	local hrp = character:WaitForChild("HumanoidRootPart")
+
+	animationConnection = hum.AnimationPlayed:Connect(function(track)
+		local animID = tostring(track.Animation.AnimationId)
+
+		if triggerRemoteAnimations[animID] and _G.AutoWallCombo and not isCooldown then
+			task.delay(0.2, function()
+				pcall(function()
+					character.Communicate:FireServer({ Mobile = true, Goal = "LeftClick" })
+				end)
+			end)
+			task.delay(0.5, function()
+				pcall(function()
+					character.Communicate:FireServer({ Goal = "LeftClickRelease", Mobile = true })
+				end)
+			end)
+		end
+
+		if isBurrowAnimation(animID) and not _G.BurrowRunning and _G.AutoWallCombo then
+			_G.BurrowRunning = true
+			task.delay(0.15, function()
+				local targets = getNearbyTargets(character, 10)
+				local closest, dist = nil, math.huge
+				for _, t in ipairs(targets) do
+					local d = (t.HumanoidRootPart.Position - hrp.Position).Magnitude
+					if d < dist then
+						closest = t
+						dist = d
+					end
+				end
+				if closest then burrowUnderTarget(character, closest) end
+				_G.BurrowRunning = false
+			end)
+		end
+	end)
+end
+
+player.CharacterAdded:Connect(function(char)
+	character = char
+	humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+	connectAnimationWatcher()
+	if _G.AutoWallCombo then startSpam() end
+end)
+
+connectAnimationWatcher()
+startSpam()
