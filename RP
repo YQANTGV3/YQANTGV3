@@ -1,0 +1,42 @@
+getgenv().RespawnAtDeathPos = true
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- Clear kết nối cũ nếu có
+if getgenv()._RespawnConn then getgenv()._RespawnConn:Disconnect() end
+if getgenv()._DiedConn then getgenv()._DiedConn:Disconnect() end
+if getgenv()._CharAddedConn then getgenv()._CharAddedConn:Disconnect() end
+
+-- Ghi vị trí khi chết
+local function MonitorDeath()
+	local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+
+	if hum and hrp then
+		if getgenv()._DiedConn then getgenv()._DiedConn:Disconnect() end
+		getgenv()._DiedConn = hum.Died:Connect(function()
+			if getgenv().RespawnAtDeathPos then
+				getgenv()._LastDeathPosition = hrp.Position
+			end
+		end)
+	end
+end
+
+-- Khi nhân vật hồi sinh → dịch chuyển về vị trí đã chết
+if getgenv()._RespawnConn then getgenv()._RespawnConn:Disconnect() end
+getgenv()._RespawnConn = LocalPlayer.CharacterAdded:Connect(function(char)
+	task.spawn(function()
+		if getgenv().RespawnAtDeathPos and getgenv()._LastDeathPosition then
+			local hrp = char:WaitForChild("HumanoidRootPart", 5)
+			if hrp then
+				hrp.CFrame = CFrame.new(getgenv()._LastDeathPosition + Vector3.new(0, 3, 0))
+			end
+		end
+		MonitorDeath() -- theo dõi sau khi đã hồi sinh
+	end)
+end)
+
+-- Theo dõi character hiện tại
+MonitorDeath()
