@@ -1,0 +1,10 @@
+getgenv().RespawnAtDeathPos = false
+getgenv()._LastDeathPosition = nil
+
+for _, connName in ipairs({"_RespawnConn", "_DiedConn", "_CharAddedConn"}) do
+	local conn = getgenv()[connName]
+	if typeof(conn) == "RBXScriptConnection" then
+		conn:Disconnect()
+	end
+	getgenv()[connName] = nil
+end
