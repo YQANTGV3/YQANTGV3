@@ -1,0 +1,92 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local HRP = Character:WaitForChild("HumanoidRootPart")
+
+local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+gui.Name = "SitLayGui"
+gui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 200, 0, 120)
+frame.Position = UDim2.new(0.5, -100, 0.7, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BackgroundTransparency = 0.2
+frame.BorderSizePixel = 0
+frame.AnchorPoint = Vector2.new(0.5, 0.5)
+frame.Active = true
+frame.Draggable = true
+Instance.new("UICorner", frame)
+
+local sitButton = Instance.new("TextButton", frame)
+sitButton.Size = UDim2.new(1, -20, 0, 40)
+sitButton.Position = UDim2.new(0, 10, 0, 10)
+sitButton.Text = "Sit"
+sitButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180)
+sitButton.TextColor3 = Color3.new(1, 1, 1)
+sitButton.Font = Enum.Font.Gotham
+sitButton.TextSize = 14
+sitButton.BorderSizePixel = 0
+Instance.new("UICorner", sitButton)
+
+local layButton = Instance.new("TextButton", frame)
+layButton.Size = UDim2.new(1, -20, 0, 40)
+layButton.Position = UDim2.new(0, 10, 0, 60)
+layButton.Text = "Laydown (ON)"
+layButton.BackgroundColor3 = Color3.fromRGB(200, 80, 100)
+layButton.TextColor3 = Color3.new(1, 1, 1)
+layButton.Font = Enum.Font.Gotham
+layButton.TextSize = 14
+layButton.BorderSizePixel = 0
+Instance.new("UICorner", layButton)
+
+local isSitting = false
+local isLying = false
+
+sitButton.MouseButton1Click:Connect(function()
+	if not isSitting then
+		Humanoid.Sit = true
+		isSitting = true
+	end
+end)
+
+layButton.MouseButton1Click:Connect(function()
+	isLying = not isLying
+	if isLying then
+		layButton.Text = "Laydown (OFF)"
+		for _, track in ipairs(Humanoid:GetPlayingAnimationTracks()) do
+			track:Stop()
+		end
+		Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, false)
+		Humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+
+		local pos = HRP.Position
+		local look = HRP.CFrame.LookVector
+		local right = HRP.CFrame.RightVector
+		local up = -look
+		HRP.CFrame = CFrame.fromMatrix(pos, right, up)
+	else
+		layButton.Text = "Laydown (ON)"
+		Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, true)
+		Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+		HRP.CFrame = CFrame.new(HRP.Position)
+	end
+end)
+
+Humanoid.StateChanged:Connect(function(_, new)
+	if new == Enum.HumanoidStateType.Jumping or new == Enum.HumanoidStateType.Freefall then
+		if isSitting then
+			Humanoid.Sit = false
+			isSitting = false
+		end
+		if isLying then
+			isLying = false
+			Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp, true)
+			Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+			HRP.CFrame = CFrame.new(HRP.Position)
+			layButton.Text = "Laydown (ON)"
+		end
+	end
+end)
