@@ -1,0 +1,183 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "FlyGUI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local flying, noclip = false, false
+local speed, defaultSpeed = 60, 60
+
+local dummyAnim = Instance.new("Animation")
+dummyAnim.AnimationId = "rbxassetid://0"
+
+local dummyTrack, bodyGyro, bodyVelocity
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+local function updateCharacterRefs()
+	character = player.Character or player.CharacterAdded:Wait()
+	humanoid = character:WaitForChild("Humanoid")
+	rootPart = character:WaitForChild("HumanoidRootPart")
+end
+
+local function createButton(text, size, pos, parent, color)
+	local btn = Instance.new("TextButton")
+	btn.Size, btn.Position, btn.Text = size, pos, text
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 18
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.BackgroundColor3 = color or Color3.fromRGB(70, 130, 180)
+	btn.Parent = parent
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+	return btn
+end
+
+local toggleIcon = createButton("FLY", UDim2.new(0, 40, 0, 40), UDim2.new(0, 10, 0.5, -20), gui, Color3.fromRGB(50, 50, 50))
+toggleIcon.TextSize, toggleIcon.ZIndex, toggleIcon.Active, toggleIcon.Draggable = 22, 10, true, true
+
+local frame = Instance.new("Frame")
+frame.Size, frame.Position = UDim2.new(0, 240, 0, 200), UDim2.new(0, 60, 1.2, 0)
+frame.Active, frame.Draggable = true, true
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+frame.Parent = gui
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
+
+TweenService:Create(frame, TweenInfo.new(0.5), {Position = UDim2.new(0, 60, 0.5, -100)}):Play()
+
+local flyBtn = createButton("Fly: OFF", UDim2.new(0, 200, 0, 35), UDim2.new(0.5, 0, 0, 10), frame)
+flyBtn.AnchorPoint = Vector2.new(0.5, 0)
+
+local minusBtn = createButton("-", UDim2.new(0, 35, 0, 35), UDim2.new(0, 10, 0, 55), frame)
+local plusBtn = createButton("+", UDim2.new(0, 35, 0, 35), UDim2.new(0, 55, 0, 55), frame)
+local resetBtn = createButton("Reset", UDim2.new(0, 80, 0, 30), UDim2.new(0.5, -40, 1, -40), frame)
+
+local noclipBtn = createButton("Noclip: OFF", UDim2.new(0, 200, 0, 35), UDim2.new(0.5, 0, 0, 100), frame, Color3.fromRGB(100, 100, 100))
+noclipBtn.AnchorPoint = Vector2.new(0.5, 0)
+
+local speedBox = Instance.new("TextBox")
+speedBox.Size, speedBox.Position = UDim2.new(0, 80, 0, 35), UDim2.new(0, 100, 0, 55)
+speedBox.PlaceholderText, speedBox.Text, speedBox.ClearTextOnFocus = tostring(speed), "", false
+speedBox.TextColor3 = Color3.new(1, 1, 1)
+speedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+speedBox.Font, speedBox.TextSize = Enum.Font.Gotham, 18
+speedBox.Parent = frame
+Instance.new("UICorner", speedBox).CornerRadius = UDim.new(0, 8)
+
+local function getMoveVector()
+	local dir = humanoid.MoveDirection
+	if dir.Magnitude == 0 then return Vector3.zero end
+	local cf = camera.CFrame
+	local rel = CFrame.lookAt(Vector3.zero, cf.LookVector, cf.UpVector):VectorToObjectSpace(dir)
+	rel = Vector3.new(rel.X, rel.Y, -rel.Z)
+	return (cf.LookVector * rel.Z + cf.RightVector * rel.X).Unit
+end
+
+local function stopFly()
+	flying = false
+	flyBtn.Text = "Fly: OFF"
+	if dummyTrack then dummyTrack:Stop(); dummyTrack:Destroy(); dummyTrack = nil end
+	if bodyGyro then bodyGyro:Destroy(); bodyGyro = nil end
+	if bodyVelocity then bodyVelocity:Destroy(); bodyVelocity = nil end
+	local anim = character:FindFirstChild("Animate")
+	if anim then anim.Disabled = false end
+	if humanoid then humanoid:ChangeState(Enum.HumanoidStateType.Running) end
+	RunService:UnbindFromRenderStep("FlyUpdate")
+end
+
+local function startFly()
+	updateCharacterRefs()
+	if humanoid then
+		local anim = character:FindFirstChild("Animate")
+		if anim then anim.Disabled = true end
+		humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+
+		dummyTrack = humanoid:LoadAnimation(dummyAnim)
+		dummyTrack.Priority = Enum.AnimationPriority.Action4
+		dummyTrack:Play()
+
+		bodyGyro = Instance.new("BodyGyro", rootPart)
+		bodyGyro.P, bodyGyro.MaxTorque = 100000, Vector3.new(1,1,1) * math.huge
+
+		bodyVelocity = Instance.new("BodyVelocity", rootPart)
+		bodyVelocity.MaxForce = Vector3.new(1,1,1) * math.huge
+
+		RunService:BindToRenderStep("FlyUpdate", Enum.RenderPriority.Input.Value, function()
+			if flying then
+				bodyGyro.CFrame = camera.CFrame - camera.CFrame.Position + rootPart.Position
+				bodyVelocity.Velocity = getMoveVector() * speed
+			end
+		end)
+	end
+end
+
+flyBtn.MouseButton1Click:Connect(function()
+	if flying then stopFly() else flying, flyBtn.Text = true, "Fly: ON"; startFly() end
+end)
+
+plusBtn.MouseButton1Click:Connect(function()
+	speed += 5
+	speedBox.PlaceholderText = tostring(speed)
+end)
+
+minusBtn.MouseButton1Click:Connect(function()
+	speed = math.max(5, speed - 5)
+	speedBox.PlaceholderText = tostring(speed)
+end)
+
+resetBtn.MouseButton1Click:Connect(function()
+	speed = defaultSpeed
+	speedBox.PlaceholderText = tostring(speed)
+end)
+
+speedBox.FocusLost:Connect(function(enter)
+	if enter then
+		local val = tonumber(speedBox.Text)
+		if val then
+			speed = math.clamp(val, 5, 500)
+			speedBox.PlaceholderText = tostring(speed)
+			speedBox.Text = ""
+		end
+	end
+end)
+
+toggleIcon.MouseButton1Click:Connect(function()
+	local hidden = frame.Position.X.Offset < 0
+	local target = hidden and UDim2.new(0, 300, 0.5, -100) or UDim2.new(0, -500, 0.5, -100)
+	TweenService:Create(frame, TweenInfo.new(0.7), {Position = target}):Play()
+end)
+
+noclipBtn.MouseButton1Click:Connect(function()
+	noclip = not noclip
+	noclipBtn.Text = "Noclip: " .. (noclip and "ON" or "OFF")
+	if player.Character then
+		for _, part in ipairs(player.Character:GetDescendants()) do
+			if part:IsA("BasePart") then part.CanCollide = not noclip end
+		end
+	end
+end)
+
+RunService.Stepped:Connect(function()
+	if noclip and player.Character then
+		for _, part in ipairs(player.Character:GetDescendants()) do
+			if part:IsA("BasePart") then part.CanCollide = false end
+		end
+	end
+end)
+
+player.CharacterAdded:Connect(function()
+	updateCharacterRefs()
+	stopFly()
+	if noclip then
+		for _, part in ipairs(character:GetDescendants()) do
+			if part:IsA("BasePart") then part.CanCollide = false end
+		end
+	end
+end)
