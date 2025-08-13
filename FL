@@ -1,0 +1,112 @@
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local screenGui = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
+screenGui.Name = "FlipGui"
+screenGui.ResetOnSpawn = false
+
+local h = 0.0174533
+
+local function flip(dir)
+	local char = Player.Character or Player.CharacterAdded:Wait()
+	local humanoid = char:FindFirstChildOfClass("Humanoid")
+	local HRP = char:FindFirstChild("HumanoidRootPart")
+	if not humanoid or not HRP then return end
+
+	humanoid:ChangeState("Jumping")
+	task.wait()
+	humanoid.Sit = true
+
+	for i = 1, 360 do
+		task.delay(i / 720, function()
+			if HRP and humanoid then
+				humanoid.Sit = true
+				local angle = (dir == "front") and -h or h
+				HRP.CFrame = HRP.CFrame * CFrame.Angles(angle, 0, 0)
+			end
+		end)
+	end
+
+	task.wait(0.55)
+	humanoid.Sit = false
+end
+
+local function createRainbowBorder(parent)
+	local stroke = Instance.new("UIStroke")
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Thickness = 2
+	stroke.Parent = parent
+
+	task.spawn(function()
+		local hue = 0
+		while stroke and parent and parent.Parent do
+			hue = (hue + 1) % 360
+			stroke.Color = Color3.fromHSV(hue / 360, 1, 1)
+			task.wait(0.02)
+		end
+	end)
+end
+
+local function makeButton(name, text, pos, callback)
+	local btn = Instance.new("TextButton", screenGui)
+	btn.Name = name
+	btn.Size = UDim2.new(0, 50, 0, 50)
+	btn.Position = pos
+	btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+	btn.Text = text
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 14
+	btn.BorderSizePixel = 0
+	btn.AnchorPoint = Vector2.new(0.5, 0.5)
+	btn.AutoButtonColor = false
+	btn.Active = true
+
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 12)
+	createRainbowBorder(btn)
+
+	local isDragging = false
+	local dragStart, startPos
+
+	btn.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			dragStart = input.Position
+			startPos = btn.Position
+			isDragging = true
+		end
+	end)
+
+	btn.InputChanged:Connect(function(input)
+		if isDragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+			local delta = input.Position - dragStart
+			btn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		end
+	end)
+
+	btn.InputEnded:Connect(function(input)
+		if isDragging and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) then
+			isDragging = false
+			local moved = (input.Position - dragStart).Magnitude
+			if moved < 6 then -- Nếu nhấn đứng yên (không kéo)
+				callback()
+			end
+		end
+	end)
+
+	return btn
+end
+
+makeButton("FrontflipBtn", "Front", UDim2.new(0, 120, 0, 300), function() flip("front") end)
+makeButton("BackflipBtn", "Back", UDim2.new(0, 180, 0, 300), function() flip("back") end)
+
+Players.LocalPlayer.CharacterAdded:Connect(function()
+	task.wait(1)
+end)
+
+pcall(function()
+	game.StarterGui:SetCore("SendNotification", {
+		Title = "Flip GUI",
+		Text = "Đã sửa chuẩn. Giờ nhấn mới flip! ✅",
+		Icon = "rbxassetid://505845268",
+		Duration = 4
+	})
+end)
